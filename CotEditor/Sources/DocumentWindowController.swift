@@ -63,7 +63,13 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate {
     private var documentSyntaxObserver: AnyCancellable?
     private var syntaxListObserver: AnyCancellable?
     private weak var syntaxPopUpButton: NSPopUpButton?
-    
+
+    private lazy var bindings = [
+        (window as? DocumentWindow)?.observe(\.contentBackgroundColor) { [weak self] _, _ in
+            self?.updateTitlebarBackgroundColor()
+        },
+    ]
+
     
     
     // MARK: Lifecycle
@@ -95,7 +101,15 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate {
         toolbar.delegate = self
         window.toolbarStyle = .unified
         window.toolbar = toolbar
-        
+
+        // Tint the toolbar to match the editor theme
+        if let titlebarContainer = window.contentView?.superview?.firstDescendant(withClassName: "NSTitlebarContainerView" ) {
+            for effectView in titlebarContainer.descendants(withClassName: "NSVisualEffectView") {
+                effectView.isHidden = true
+            }
+        }
+        updateTitlebarBackgroundColor()
+
         // cascade window position
         // -> Perform after setting the toolbar.
         let cascadingPoint = NSApp.mainWindow?.cascadeTopLeft(from: .zero) ?? .zero
@@ -125,9 +139,15 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate {
                                                    UserDefaults.standard.publisher(for: .recentSyntaxNames))
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.buildSyntaxPopUpButton() }
+
+        _ = bindings
     }
-    
-    
+
+    deinit {
+        bindings.forEach { $0?.invalidate() }
+    }
+
+
     
     // MARK: Window Controller Methods
     
@@ -195,7 +215,14 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate {
         
         self.restoreWindowOpacity()
     }
-    
+
+
+    func windowDidUpdate(_ notification: Notification) {
+        // Hide the titlebar separator if we don't have the tab bar
+        let hasTabs = window?.tabbedWindows != nil
+        window?.titlebarSeparatorStyle = hasTabs ? .automatic : .none
+    }
+
     
     
     // MARK: Private Methods
@@ -284,6 +311,15 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate {
             menu.insertItem(.separator(), at: 1)
             menu.item(at: 1)?.tag = deletedTag
         }
+    }
+
+
+    /// Sets the titlebar background color to match the document's background color.
+    private func updateTitlebarBackgroundColor() {
+        guard let window = window as? DocumentWindow, let titlebarContainer = window.contentView?.superview?.firstDescendant(withClassName: "NSTitlebarContainerView" ) else { return }
+
+        titlebarContainer.wantsLayer = true
+        titlebarContainer.layer?.backgroundColor = window.contentBackgroundColor.cgColor
     }
 }
 

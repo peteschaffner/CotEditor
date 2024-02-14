@@ -29,7 +29,7 @@ final class DocumentWindow: NSWindow {
     
     // MARK: Public Properties
     
-    var contentBackgroundColor: NSColor = .controlBackgroundColor {
+    @objc dynamic var contentBackgroundColor: NSColor = .controlBackgroundColor {
         
         didSet {
             guard !self.isOpaque, contentBackgroundColor != oldValue else { return }
