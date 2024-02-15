@@ -116,6 +116,7 @@ final class DocumentViewController: NSSplitViewController, ThemeChanging, NSTool
         
         // set status bar
         let statusBarItem = NSSplitViewItem(viewController: self.statusBarViewController)
+        statusBarItem.viewController.view.wantsLayer = true
         statusBarItem.isCollapsed = true  // avoid initial view loading
         self.addSplitViewItem(statusBarItem)
         self.statusBarItem = statusBarItem
@@ -945,7 +946,9 @@ final class DocumentViewController: NSSplitViewController, ThemeChanging, NSTool
         assert(Thread.isMainThread)
         
         guard let theme = ThemeManager.shared.setting(name: name) else { return }
-        
+
+        statusBarItem?.viewController.view.layer?.backgroundColor = theme.background.color.cgColor
+
         for textView in self.editorViewControllers.compactMap(\.textView) {
             textView.theme = theme
             textView.layoutManager?.invalidateHighlight(theme: theme)
