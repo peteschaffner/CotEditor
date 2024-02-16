@@ -217,14 +217,7 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate {
     }
 
 
-    func windowDidUpdate(_ notification: Notification) {
-        // Hide the titlebar separator if we don't have the tab bar
-        let hasTabs = window?.tabbedWindows != nil
-        window?.titlebarSeparatorStyle = hasTabs ? .automatic : .none
-    }
 
-    
-    
     // MARK: Private Methods
     
     /// Restores the window opacity.
