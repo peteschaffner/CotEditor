@@ -217,6 +217,13 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate {
     }
 
 
+    func windowDidUpdate(_ notification: Notification) {
+        // Hide the titlebar separator if we don't have the tab bar
+        let hasTabs = window?.tabbedWindows != nil
+        window?.titlebarSeparatorStyle = hasTabs ? .line : .none
+    }
+
+
 
     // MARK: Private Methods
     
