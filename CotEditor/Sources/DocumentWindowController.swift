@@ -79,7 +79,8 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate {
         let window = DocumentWindow(contentViewController: WindowContentViewController(document: document))
         window.styleMask.update(with: .fullSizeContentView)
         window.setFrameAutosaveName(Self.windowFrameName)
-        
+        window.titlebarSeparatorStyle = .automatic
+
         // set window size
         let width = UserDefaults.standard[.windowWidth] ?? 0
         let height = UserDefaults.standard[.windowHeight] ?? 0
@@ -214,13 +215,6 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate {
     func windowWillExitVersionBrowser(_ notification: Notification) {
         
         self.restoreWindowOpacity()
-    }
-
-
-    func windowDidUpdate(_ notification: Notification) {
-        // Hide the titlebar separator if we don't have the tab bar
-        let hasTabs = window?.tabbedWindows != nil
-        window?.titlebarSeparatorStyle = hasTabs ? .line : .none
     }
 
 

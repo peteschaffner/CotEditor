@@ -111,7 +111,7 @@ class EditorTextView: NSTextView, Themable, CurrentLineHighlighting, MultiCursor
     
     private let textFinder = TextFinder()
     
-    private static let textContainerInset = NSSize(width: 4, height: 8)
+    private static let textContainerInset = NSSize(width: 4, height: 12)
     
     private let matchingBracketPairs: [BracePair] = BracePair.braces + [.doubleQuotes]
     private lazy var braceHighlightDebouncer = Debouncer { [weak self] in self?.highlightMatchingBrace() }
