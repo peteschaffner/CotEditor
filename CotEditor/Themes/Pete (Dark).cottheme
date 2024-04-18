@@ -1,0 +1,59 @@
+{
+  "attributes" : {
+    "color" : "#3fadff"
+  },
+  "background" : {
+    "color" : "#171717"
+  },
+  "characters" : {
+    "color" : "#cebd68"
+  },
+  "commands" : {
+    "color" : "#ff8a66"
+  },
+  "comments" : {
+    "color" : "#444444"
+  },
+  "insertionPoint" : {
+    "color" : "#106bff",
+    "usesSystemSetting" : false
+  },
+  "invisibles" : {
+    "color" : "#262626"
+  },
+  "keywords" : {
+    "color" : "#fa5fa1"
+  },
+  "lineHighlight" : {
+    "color" : "#1e1e1e"
+  },
+  "metadata" : {
+    "author" : "1024jp",
+    "description" : "CotEditor bundled theme.",
+    "distributionURL" : "https:\/\/coteditor.com",
+    "license" : "Same as CotEditor (Apache, ver.2)"
+  },
+  "name" : "Pete (Dark)",
+  "numbers" : {
+    "color" : "#cebd6a"
+  },
+  "selection" : {
+    "color" : "#262626",
+    "usesSystemSetting" : false
+  },
+  "strings" : {
+    "color" : "#fe4e59"
+  },
+  "text" : {
+    "color" : "#afafaf"
+  },
+  "types" : {
+    "color" : "#5dd7ff"
+  },
+  "values" : {
+    "color" : "#68b7a3"
+  },
+  "variables" : {
+    "color" : "#fa5fa2"
+  }
+}
