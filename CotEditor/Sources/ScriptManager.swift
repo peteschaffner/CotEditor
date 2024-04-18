@@ -31,9 +31,10 @@ import Combine
 // -> According to the documentation, NSAppleEventDescriptor is just a wrapper of AEDesc,
 //    so seems safe to conform to Sendable. (macOS 12, Xcode 14.0)
 extension NSAppleEventDescriptor: @unchecked Sendable { }
+extension NSScriptObjectSpecifier: @unchecked Sendable { }
 
 
-final class ScriptManager: NSObject, NSFilePresenter {
+final class ScriptManager: NSObject, NSFilePresenter, @unchecked Sendable {
     
     // MARK: Public Properties
     
@@ -84,14 +85,14 @@ final class ScriptManager: NSObject, NSFilePresenter {
     func presentedItemDidChange() {
         
         self.debounceTask?.cancel()
-        self.debounceTask = .detached { [weak self] in
+        self.debounceTask = Task.detached { [weak self] in
             if await NSApp.isActive {
                 try await Task.sleep(for: .seconds(0.2), tolerance: .seconds(0.1))
                 await self?.buildScriptMenu()
                 
             } else {
                 for await _ in await NotificationCenter.default.notifications(named: NSApplication.didBecomeActiveNotification) {
-                    guard !Task.isCancelled else { return }
+                    try Task.checkCancellation()
                     await self?.buildScriptMenu()
                     return
                 }
@@ -146,16 +147,24 @@ final class ScriptManager: NSObject, NSFilePresenter {
     ///
     /// - Parameters:
     ///   - eventType: The event trigger to perform script.
-    ///   - document: The target document.
-    func dispatch(event eventType: ScriptingEventType, document: NSDocument) {
+    ///   - documentSpecifier: The script object specifier of the target document.
+    func dispatch(event eventType: ScriptingEventType, document documentSpecifier: NSScriptObjectSpecifier) {
         
         guard
             let scripts = self.scriptHandlersTable[eventType],
             !scripts.isEmpty
         else { return }
         
+        // Create an Apple event caused by the given `Document`.
+        let documentDescriptor = documentSpecifier.descriptor ?? NSAppleEventDescriptor(string: "BUG: document.objectSpecifier.descriptor was nil")
+        let event = NSAppleEventDescriptor(eventClass: "cEd1",
+                                           eventID: eventType.eventID,
+                                           targetDescriptor: nil,
+                                           returnID: AEReturnID(kAutoGenerateReturnID),
+                                           transactionID: AETransactionID(kAnyTransactionID))
+        event.setParam(documentDescriptor, forKeyword: keyDirectObject)
+        
         Task {
-            let event = self.createEvent(by: document, eventID: eventType.eventID)
             await self.dispatch(event, handlers: scripts)
         }
     }
@@ -263,34 +272,6 @@ final class ScriptManager: NSObject, NSFilePresenter {
             default:
                 NSApp.presentError(error)
         }
-    }
-    
-    
-    /// Creates an Apple event caused by the given `Document`.
-    ///
-    /// - Bug:
-    ///   NSScriptObjectSpecifier.descriptor can be nil.
-    ///   If `nil`, the error is propagated by passing a string in place of `Document`.
-    ///   [#649](https://github.com/coteditor/CotEditor/pull/649)
-    ///
-    /// - Parameters:
-    ///   - document: The document to dispatch an Apple event.
-    ///   - eventID: The event ID to be set in the returned event.
-    /// - Returns: A descriptor for an Apple event by the `Document`.
-    private func createEvent(by document: NSDocument, eventID: AEEventID) -> NSAppleEventDescriptor {
-        
-        assert(!Thread.isMainThread)
-        
-        let event = NSAppleEventDescriptor(eventClass: "cEd1",
-                                           eventID: eventID,
-                                           targetDescriptor: nil,
-                                           returnID: AEReturnID(kAutoGenerateReturnID),
-                                           transactionID: AETransactionID(kAnyTransactionID))
-        let documentDescriptor = document.objectSpecifier.descriptor ?? NSAppleEventDescriptor(string: "BUG: document.objectSpecifier.descriptor was nil")
-        
-        event.setParam(documentDescriptor, forKeyword: keyDirectObject)
-        
-        return event
     }
     
     

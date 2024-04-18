@@ -35,8 +35,8 @@ struct FormatSettingsView: View {
     
     @AppStorage(.syntax) private var syntax
     
-    @StateObject private var encodingManager: EncodingManager = .shared
-    @StateObject private var syntaxManager: SyntaxManager = .shared
+    @State private var fileEncodings: [FileEncoding?] = []
+    @State private var syntaxNames: [String] = []
     
     
     private var fileEncoding: Binding<FileEncoding> {
@@ -81,7 +81,7 @@ struct FormatSettingsView: View {
                     .gridColumnAlignment(.trailing)
                 
                 Picker(selection: fileEncoding) {
-                    ForEach(Array(self.encodingManager.fileEncodings.enumerated()), id: \.offset) { (_, encoding) in
+                    ForEach(Array(self.fileEncodings.enumerated()), id: \.offset) { (_, encoding) in
                         if let encoding {
                             Text(encoding.localizedName)
                                 .tag(encoding)
@@ -119,9 +119,19 @@ struct FormatSettingsView: View {
                     .gridColumnAlignment(.trailing)
                 
                 Picker(selection: $syntax) {
-                    Text("SyntaxName.none", tableName: "Syntax").tag(SyntaxName.none)
+                    Text(String(localized: "SyntaxName.none", defaultValue: "None", table: "Syntax"))
+                        .tag(SyntaxName.none)
+                    
                     Divider()
-                    ForEach(self.syntaxManager.settingNames, id: \.self) {
+                    
+                    if !(self.syntaxNames + [SyntaxName.none]).contains(self.syntax) {
+                        Text(self.syntax).tag(self.syntax)
+                            .help(String(localized: "This syntax does not exist",
+                                         table: "FormatSettings", comment: "tooltip"))
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    ForEach(self.syntaxNames, id: \.self) {
                         Text($0).tag($0)
                     }
                 } label: {
@@ -144,6 +154,12 @@ struct FormatSettingsView: View {
                 Spacer()
                 HelpButton(anchor: "settings_format")
             }
+        }
+        .onReceive(EncodingManager.shared.$fileEncodings) { fileEncodings in
+            self.fileEncodings = fileEncodings
+        }
+        .onReceive(SyntaxManager.shared.$settingNames) { settingNames in
+            self.syntaxNames = settingNames
         }
         .scenePadding()
         .frame(width: 600)

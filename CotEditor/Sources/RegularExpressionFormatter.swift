@@ -8,7 +8,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2018-2023 1024jp
+//  © 2018-2024 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ final class RegularExpressionFormatter: Formatter {
     var mode: RegularExpressionParseMode = .search
     var parsesRegularExpression: Bool = true
     var showsInvisibles: Bool = false
-    var showsError: Bool = true
+    var showsError: Bool = false
     
     
     // MARK: Private Properties
@@ -44,7 +44,7 @@ final class RegularExpressionFormatter: Formatter {
     
     // MARK: Formatter Function
     
-    /// Converts to plain string
+    /// Converts to plain string.
     override func string(for obj: Any?) -> String? {
         
         obj as? String
@@ -68,9 +68,11 @@ final class RegularExpressionFormatter: Formatter {
                         _ = try NSRegularExpression(pattern: string)
                     } catch {
                         if self.showsError {
-                            let alert = NSAttributedString(systemSymbolName: "exclamationmark.triangle.fill",
-                                                           configuration: .preferringMulticolor())
-                            attributedString.insert(alert, at: 0)
+                            let alert = NSAttributedString(systemSymbolName: "exclamationmark.triangle.fill", configuration: .preferringMulticolor())
+                            // add ZERO WIDTH SPACE to avoid losing the paragraph style determining trailing truncation
+                            // due to adding an image attachment at the beginning (macOS 14, 2024-04)
+                            let zeroWidthSpace = NSAttributedString(string: "\u{200B}", attributes: attrs)
+                            attributedString.insert(zeroWidthSpace + alert, at: 0)
                         }
                         return attributedString
                     }

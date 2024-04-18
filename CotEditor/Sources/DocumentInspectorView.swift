@@ -87,7 +87,7 @@ struct DocumentInspectorView: View {
         @Published var fileURL: URL?
         @Published var encoding: FileEncoding = .utf8
         @Published var lineEnding: LineEnding = .lf
-        @Published var countResult: EditorCountResult = .init()
+        @Published var countResult: EditorCounter.Result = .init()
         
         var document: Document?  { willSet { self.invalidateObservation(document: newValue) } }
         
@@ -133,7 +133,7 @@ private struct DocumentFileView: View {
         DisclosureGroup(String(localized: "Document File", table: "Document", comment: "section title in inspector"), isExpanded: $isExpanded) {
             Form {
                 OptionalLabeledContent(String(localized: "Created", table: "Document",
-                                             comment: "label in document inspector"),
+                                              comment: "label in document inspector"),
                                        value: self.attributes?.creationDate?.formatted(date: .abbreviated, time: .shortened))
                 OptionalLabeledContent(String(localized: "Modified", table: "Document",
                                               comment: "label in document inspector"),
@@ -184,7 +184,7 @@ private struct TextSettingsView: View {
 
 private struct CountLocationView: View {
     
-    var result: EditorCountResult
+    var result: EditorCounter.Result
     
     @State private var isExpanded = true
     
@@ -326,7 +326,6 @@ private extension DocumentInspectorView.Model {
         
         if let document {
             document.analyzer.updatesAll = true
-            document.analyzer.invalidate()
             
             self.observers = [
                 document.publisher(for: \.fileURL, options: .initial)

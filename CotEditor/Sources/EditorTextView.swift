@@ -67,8 +67,7 @@ class EditorTextView: NSTextView, Themable, CurrentLineHighlighting, MultiCursor
     var isAutomaticCompletionEnabled = false
     var isAutomaticIndentEnabled = false
     
-    var inlineCommentDelimiter: String?
-    var blockCommentDelimiters: Pair<String>?
+    var commentDelimiters: Syntax.Comment = Syntax.Comment()
     var syntaxCompletionWords: [String] = []
     
     var needsUpdateLineHighlight = true {
@@ -135,7 +134,7 @@ class EditorTextView: NSTextView, Themable, CurrentLineHighlighting, MultiCursor
     private var defaultsObservers: Set<AnyCancellable> = []
     private var fontObservers: Set<AnyCancellable> = []
     private var windowOpacityObserver: AnyCancellable?
-    private var keyStateObserver: AnyCancellable?
+    private var keyStateObservers: [any NSObjectProtocol] = []
     
     
     
@@ -188,13 +187,13 @@ class EditorTextView: NSTextView, Themable, CurrentLineHighlighting, MultiCursor
         self.tabWidth = defaults[.tabWidth]
         layoutManager.tabWidth = self.tabWidth
         
-        textContainer.isHangingIndentEnabled = defaults[.enablesHangingIndent]
-        textContainer.hangingIndentWidth = defaults[.hangingIndentWidth]
-        layoutManager.showsIndentGuides = defaults[.showIndentGuides]
-        
         // setup behaviors
         self.isAutomaticTabExpansionEnabled = defaults[.autoExpandTab]
         self.isAutomaticIndentEnabled = defaults[.autoIndent]
+        
+        layoutManager.showsIndentGuides = defaults[.showIndentGuides]
+        textContainer.isHangingIndentEnabled = defaults[.enablesHangingIndent]
+        textContainer.hangingIndentWidth = defaults[.hangingIndentWidth]
         
         // observe changes in defaults
         self.defaultsObservers = [
@@ -231,16 +230,6 @@ class EditorTextView: NSTextView, Themable, CurrentLineHighlighting, MultiCursor
                 .filter { !$0 }
                 .sink { [unowned self] _ in self.layoutManager?.removeTemporaryAttribute(.roundedBackgroundColor, forCharacterRange: self.string.nsRange) },
         ]
-        
-        // workaround the issue that indicators display even the application is inactive
-        // (2023-08 macOS 14 beta 5, FB12968177)
-        if #available(macOS 14, *) {
-            self.keyStateObserver = Publishers.Merge3(
-                NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification, object: NSApp),
-                NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification, object: NSApp),
-                NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification))
-            .sink { [unowned self] _ in self.invalidateInsertionPointDisplayMode(isFirstResponder: self.window?.firstResponder == self) }
-        }
     }
     
     
@@ -321,8 +310,8 @@ class EditorTextView: NSTextView, Themable, CurrentLineHighlighting, MultiCursor
         // post notification about becoming the first responder
         NotificationCenter.default.post(name: EditorTextView.didBecomeFirstResponderNotification, object: self)
         
-        if #available(macOS 14, *) {
-            self.invalidateInsertionPointDisplayMode(isFirstResponder: true)
+        defer {
+            self.invalidateInsertionIndicatorDisplayMode()
         }
         
         return true
@@ -333,8 +322,8 @@ class EditorTextView: NSTextView, Themable, CurrentLineHighlighting, MultiCursor
         
         guard super.resignFirstResponder() else { return false }
         
-        if #available(macOS 14, *) {
-            self.invalidateInsertionPointDisplayMode(isFirstResponder: false)
+        defer {
+            self.invalidateInsertionIndicatorDisplayMode()
         }
         
         return true
@@ -357,6 +346,23 @@ class EditorTextView: NSTextView, Themable, CurrentLineHighlighting, MultiCursor
                 self?.enclosingScrollView?.drawsBackground = $0
                 self?.lineHighlightColor = self?.theme?.lineHighlightColor(forOpaqueBackground: $0)
             }
+        
+        // observe key window state for insertion points drawing
+        if #available(macOS 14, *), let window {
+            self.keyStateObservers = [
+                NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) { [weak self] _ in
+                    self?.invalidateInsertionIndicatorDisplayMode()
+                },
+                NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: window, queue: .main) { [weak self] _ in
+                    self?.invalidateInsertionIndicatorDisplayMode()
+                },
+            ]
+        } else {
+            for observer in self.keyStateObservers {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            self.keyStateObservers.removeAll()
+        }
     }
     
     
@@ -782,18 +788,22 @@ class EditorTextView: NSTextView, Themable, CurrentLineHighlighting, MultiCursor
         
         self.needsUpdateLineHighlight = true
         
+        // invalidate current instances highlight
+        if UserDefaults.standard[.highlightSelectionInstance] {
+            self.instanceHighlightTask?.cancel()
+            if let layoutManager = self.layoutManager, layoutManager.hasTemporaryAttribute(.roundedBackgroundColor) {
+                layoutManager.removeTemporaryAttribute(.roundedBackgroundColor, forCharacterRange: self.string.nsRange)
+            }
+        }
+        
         if !stillSelectingFlag, !self.isShowingCompletion {
             // highlight matching brace
             if UserDefaults.standard[.highlightBraces] {
                 self.braceHighlightDebouncer.schedule()
             }
             
-            // invalidate current instances highlight
+            // update instances highlight
             if UserDefaults.standard[.highlightSelectionInstance] {
-                self.instanceHighlightTask?.cancel()
-                if let layoutManager = self.layoutManager, layoutManager.hasTemporaryAttribute(.roundedBackgroundColor) {
-                    layoutManager.removeTemporaryAttribute(.roundedBackgroundColor, forCharacterRange: self.string.nsRange)
-                }
                 self.highlightInstances(after: .seconds(UserDefaults.standard[.selectionInstanceHighlightDelay]))
             }
         }
@@ -1134,13 +1144,13 @@ class EditorTextView: NSTextView, Themable, CurrentLineHighlighting, MultiCursor
                 (item as? NSMenuItem)?.title = self.canUncomment(partly: false)
                     ? String(localized: "Uncomment", table: "MainMenu")
                     : String(localized: "Comment Out", table: "MainMenu")
-                return (self.inlineCommentDelimiter != nil) || (self.blockCommentDelimiters != nil)
+                return (self.commentDelimiters.inline != nil) || (self.commentDelimiters.block != nil)
                 
             case #selector(inlineCommentOut):
-                return (self.inlineCommentDelimiter != nil)
+                return (self.commentDelimiters.inline != nil)
                 
             case #selector(blockCommentOut):
-                return (self.blockCommentDelimiters != nil)
+                return (self.commentDelimiters.block != nil)
                 
             case #selector(uncomment(_:)):
                 return self.canUncomment(partly: true)
@@ -1255,8 +1265,21 @@ class EditorTextView: NSTextView, Themable, CurrentLineHighlighting, MultiCursor
         self.ligature = defaults[.ligature(for: type)] ? .standard : .none
         self.usesAntialias = defaults[.antialias(for: type)]
         self.typingAttributes[.kern] = (type == .monospaced) ? 0 : nil
+        switch type {
+            case .standard:
+                self.textStorage?.removeAttribute(.kern, range: self.string.nsRange)
+            case .monospaced:
+                self.textStorage?.addAttribute(.kern, value: 0, range: self.string.nsRange)
+        }
         
-        self.observeFontDefaults(for: type)
+        self.fontObservers = [
+            defaults.publisher(for: .fontKey(for: type))
+                .sink { [unowned self] _ in self.font = UserDefaults.standard.font(for: type) },
+            defaults.publisher(for: .ligature(for: type))
+                .sink { [unowned self] in self.ligature = $0 ? .standard : .none },
+            defaults.publisher(for: .antialias(for: type))
+                .sink { [unowned self] in self.usesAntialias = $0 },
+        ]
     }
     
     
@@ -1366,25 +1389,7 @@ class EditorTextView: NSTextView, Themable, CurrentLineHighlighting, MultiCursor
         self.isGrammarCheckingEnabled = mode.grammarChecking
         self.isAutomaticSpellingCorrectionEnabled = mode.automaticSpellingCorrection
         
-        self.isAutomaticCompletionEnabled = mode.automaticCompletion
-    }
-    
-    
-    /// Starts observing the update of the user font settings of the given type.
-    ///
-    /// - Parameter type: The type of the font to observe.
-    private func observeFontDefaults(for type: FontType) {
-        
-        let defaults = UserDefaults.standard
-        
-        self.fontObservers = [
-            defaults.publisher(for: .fontKey(for: type))
-                .sink { [unowned self] _ in self.font = UserDefaults.standard.font(for: type) },
-            defaults.publisher(for: .antialias(for: type))
-                .sink { [unowned self] in self.usesAntialias = $0 },
-            defaults.publisher(for: .ligature(for: type))
-                .sink { [unowned self] in self.ligature = $0 ? .standard : .none },
-        ]
+        self.isAutomaticCompletionEnabled = mode.automaticCompletion && !mode.completionWordTypes.isEmpty
     }
     
     
@@ -1499,7 +1504,7 @@ class EditorTextView: NSTextView, Themable, CurrentLineHighlighting, MultiCursor
             // just insert the absolute path if no specific setting for the file type was found
             // -> This is the default behavior of NSTextView by file dropping.
             if !string.isEmpty {
-                string += "\n"
+                string += self.lineEnding.string
             }
             
             string += url.isFileURL ? url.path : url.absoluteString
@@ -1554,9 +1559,12 @@ class EditorTextView: NSTextView, Themable, CurrentLineHighlighting, MultiCursor
             let substring = (string as NSString).substring(with: selectedRange)
             let pattern = "\\b" + NSRegularExpression.escapedPattern(for: substring) + "\\b"
             let regex = try! NSRegularExpression(pattern: pattern)
-            let ranges = try regex.cancellableMatches(in: string, range: string.nsRange).map(\.range)
+            let ranges = try regex.cancellableMatches(in: string, range: string.nsRange)
+                .map(\.range)
+                .filter { $0 != selectedRange }
             
             guard
+                !ranges.isEmpty,
                 let lower = ranges.first?.lowerBound,
                 let upper = ranges.last?.upperBound
             else { return }

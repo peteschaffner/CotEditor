@@ -32,12 +32,12 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate {
     
     // MARK: Public Properties
     
-    var isWhitepaper = false {
+    var isWhitePaper = false {
         
         didSet {
-            guard isWhitepaper || oldValue else { return }
+            guard isWhitePaper || oldValue else { return }
             
-            self.setDocumentEdited(!isWhitepaper)
+            self.setDocumentEdited(!isWhitePaper)
         }
     }
     
@@ -46,16 +46,14 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate {
     
     private static let windowFrameName = NSWindow.FrameAutosaveName("Document")
     
-    private lazy var editedIndicator: NSView = {
-        
-        let dotView = DotView()
-        dotView.color = .tertiaryLabelColor
-        dotView.toolTip = String(localized: "Document has unsaved changes",
-                                 table: "Document",
-                                 comment: "tooltip for the “edited” indicator in the window tab")
-        dotView.setContentHuggingPriority(.defaultHigh, for: .horizontal)
-        return dotView
-    }()
+    private lazy var editedIndicator: NSView = NSHostingView(rootView: Circle()
+        .fill(.tertiary)
+        .frame(width: 4, height: 4)
+        .padding(8)
+        .help(String(localized: "Document has unsaved changes",
+                     table: "Document",
+                     comment: "tooltip for the “edited” indicator in the window tab"))
+    )
     
     private var opacityObserver: AnyCancellable?
     private var appearanceModeObserver: AnyCancellable?
@@ -120,7 +118,6 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate {
         // -> Keep opaque when the window was created as a browsing window (the right side ones in the browsing mode).
         if !document.isInViewingMode {
             self.opacityObserver = UserDefaults.standard.publisher(for: .windowAlpha, initial: true)
-                .map { CGFloat($0) }
                 .assign(to: \.backgroundAlpha, on: window)
         }
         
@@ -178,7 +175,7 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate {
         
         self.window?.tab.accessoryView = dirtyFlag ? self.editedIndicator : nil
         
-        super.setDocumentEdited(self.isWhitepaper ? false : dirtyFlag)
+        super.setDocumentEdited(self.isWhitePaper ? false : dirtyFlag)
     }
     
     
@@ -239,7 +236,7 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate {
         
         menu.removeAllItems()
         
-        let noneItem = NSMenuItem(title: String(localized: "SyntaxName.none", table: "Syntax"), action: #selector((any SyntaxChanging).changeSyntax), keyEquivalent: "")
+        let noneItem = NSMenuItem(title: String(localized: "SyntaxName.none", defaultValue: "None", table: "Syntax"), action: #selector((any SyntaxChanging).changeSyntax), keyEquivalent: "")
         noneItem.representedObject = SyntaxName.none
         
         menu.addItem(noneItem)
@@ -527,7 +524,7 @@ extension DocumentWindowController: NSToolbarDelegate {
             case .textOrientation:
                 let horizontalItem = NSToolbarItem(itemIdentifier: .horizontalText)
                 horizontalItem.label = String(localized: "Toolbar.textOrientation.horizontalText.label",
-                                              defaultValue: "Horizontal", table: "tooltip", comment: "abc")
+                                              defaultValue: "Horizontal", table: "Document")
                 horizontalItem.toolTip = String(localized: "Toolbar.textOrientation.horizontalText.tooltip",
                                                 defaultValue: "Horizontal", table: "Document")
                 horizontalItem.image = NSImage(systemSymbolName: "text.alignleft", accessibilityDescription: horizontalItem.label)
@@ -578,7 +575,7 @@ extension DocumentWindowController: NSToolbarDelegate {
                                     defaultValue: "Indent", table: "Document")
                 item.toolTip = String(localized: "Toolbar.indent.tooltip",
                                       defaultValue: "Indent selection", table: "Document")
-                item.subitems = [leftItem, rightItem]
+                item.subitems = (self.window?.windowTitlebarLayoutDirection == .rightToLeft) ? [rightItem, leftItem] : [leftItem, rightItem]
                 return item
                 
             case .comment:

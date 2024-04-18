@@ -35,8 +35,7 @@ struct FindPanelMainView: View {
             FindPanelFieldView()
             FindPanelOptionView()
         }
-        .scenePadding(.top)
-        .scenePadding(.horizontal)
+        .scenePadding([.top, .horizontal])
         .padding(.bottom, 8)
     }
 }
@@ -328,6 +327,7 @@ final class FindPanelFieldViewController: NSViewController, NSTextViewDelegate {
         textField.sizeToFit()
         
         // add extra scroll margin to the right side of the textView, so that the entire input can be read
-        textView.enclosingScrollView?.contentView.contentInsets.right = textField.frame.width
+        let leadingKeyPath = (textView.userInterfaceLayoutDirection == .rightToLeft) ? \NSEdgeInsets.left : \.right
+        textView.enclosingScrollView?.contentView.contentInsets[keyPath: leadingKeyPath] = textField.frame.width
     }
 }

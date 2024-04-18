@@ -27,6 +27,8 @@ import SwiftUI
 
 struct WindowSettingsView: View {
     
+    @Environment(\.layoutDirection) private var layoutDirection
+    
     @AppStorage(.windowTabbing) private var windowTabbing
     @AppStorage(.windowWidth) private var windowWidth
     @AppStorage(.windowHeight) private var windowHeight
@@ -88,7 +90,7 @@ struct WindowSettingsView: View {
                         VStack(spacing: 1) {
                             TextField(value: $windowWidth, format: .number, prompt: Text("Auto", tableName: "WindowSettings", comment: "placeholder for window size field"), label: EmptyView.init)
                                 .monospacedDigit()
-                                .multilineTextAlignment(.trailing)
+                                .environment(\.layoutDirection, .rightToLeft)
                                 .frame(width: 64)
                             Text("Width", tableName: "WindowSettings")
                                 .controlSize(.small)
@@ -100,7 +102,7 @@ struct WindowSettingsView: View {
                         VStack(spacing: 1) {
                             TextField(value: $windowHeight, format: .number, prompt: Text("Auto", tableName: "WindowSettings", comment: "placeholder for window size field"), label: EmptyView.init)
                                 .monospacedDigit()
-                                .multilineTextAlignment(.trailing)
+                                .environment(\.layoutDirection, .rightToLeft)
                                 .frame(width: 64)
                             Text("Height", tableName: "WindowSettings")
                                 .controlSize(.small)
@@ -199,7 +201,7 @@ struct WindowSettingsView: View {
                 
                 Stepper(value: $overscrollRate, in: 0...1, step: 0.1, format: .percent.precision(.fractionLength(0)), label: EmptyView.init)
                     .monospacedDigit()
-                    .multilineTextAlignment(.trailing)
+                    .multilineTextAlignment(self.layoutDirection == .rightToLeft ? .leading : .trailing)
             }
             
             Divider()

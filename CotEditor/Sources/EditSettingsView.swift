@@ -27,6 +27,8 @@ import SwiftUI
 
 struct EditSettingsView: View {
     
+    @Environment(\.layoutDirection) private var layoutDirection
+    
     @AppStorage(.autoExpandTab) private var autoExpandTab
     @AppStorage(.tabWidth) private var tabWidth
     @AppStorage(.detectsIndentStyle) private var detectsIndentStyle
@@ -35,8 +37,6 @@ struct EditSettingsView: View {
     
     @AppStorage(.autoTrimsTrailingWhitespace) private var autoTrimsTrailingWhitespace
     @AppStorage(.trimsWhitespaceOnlyLines) private var trimsWhitespaceOnlyLines
-    
-    @AppStorage(.appendsCommentSpacer) private var appendsCommentSpacer
     
     @AppStorage(.autoLinkDetection) private var autoLinkDetection
     @AppStorage(.highlightBraces) private var highlightBraces
@@ -82,15 +82,6 @@ struct EditSettingsView: View {
             }
             
             GridRow {
-                Text("Comment:", tableName: "EditSettings")
-                    .gridColumnAlignment(.trailing)
-                
-                VStack(alignment: .leading, spacing: 6) {
-                    Toggle(String(localized: "Append a space to comment delimiter", table: "EditSettings"), isOn: $appendsCommentSpacer)
-                }
-            }
-            
-            GridRow {
                 Text("Content parse:", tableName: "EditSettings")
                     .gridColumnAlignment(.trailing)
                 
@@ -105,7 +96,7 @@ struct EditSettingsView: View {
                         Text("Delay:", tableName: "EditSettings")
                         Stepper(value: $selectionInstanceHighlightDelay, in: 0...10, step: 0.25, format: .number.precision(.fractionLength(2)), label: EmptyView.init)
                         .monospacedDigit()
-                        .multilineTextAlignment(.trailing)  // width: 40
+                        .multilineTextAlignment(self.layoutDirection == .rightToLeft ? .leading : .trailing)  // width: 40
                         Text("seconds", tableName: "EditSettings", comment: "init for delay time")
                     }
                     .disabled(!self.highlightSelectionInstance)

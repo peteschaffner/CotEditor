@@ -80,13 +80,14 @@ struct DefaultSettings {
         .detectsIndentStyle: true,
         .autoIndent: true,
         .indentWithTabKey: false,
-        .appendsCommentSpacer: false,
         .autoLinkDetection: false,
         .checkSpellingAsType: false,
         .highlightBraces: true,
         .highlightLtGt: false,
         .highlightSelectionInstance: true,
         .selectionInstanceHighlightDelay: 0.5,
+        
+        .modes: [:],
         
         .lineEndCharCode: 0,
         .encodingList: DefaultSettings.encodings.map(UInt.init),

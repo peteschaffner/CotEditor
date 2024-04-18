@@ -93,39 +93,21 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
         // observe text orientation for line number view
         self.orientationObserver = self.textView!.publisher(for: \.layoutOrientation, options: .initial)
             .sink { [weak self] orientation in
-                guard let self else { return assertionFailure() }
-                
-                self.stackView?.orientation = switch orientation {
+                self?.stackView?.orientation = switch orientation {
                     case .horizontal: .horizontal
                     case .vertical: .vertical
                     @unknown default: fatalError()
                 }
-                
-                self.lineNumberView?.orientation = orientation
+                self?.lineNumberView?.orientation = orientation
             }
         
         // let line number view position follow writing direction
         self.writingDirectionObserver = self.textView!.publisher(for: \.baseWritingDirection)
             .removeDuplicates()
-            .map { $0 == .rightToLeft }
-            .sink { [weak self] isRTL in
-                guard
-                    let stackView = self?.stackView,
-                    let lineNumberView = self?.lineNumberView
-                else { return assertionFailure() }
-                
-                // set scroller location
-                (self?.textView?.enclosingScrollView as? BidiScrollView)?.scrollerDirection = isRTL ? .rightToLeft : .leftToRight
-                
-                // set line number view location
-                let index = isRTL ? stackView.arrangedSubviews.endIndex - 1 : 0
-                
-                guard stackView.arrangedSubviews[safe: index] != lineNumberView else { return }
-                
-                stackView.removeArrangedSubview(lineNumberView)
-                stackView.insertArrangedSubview(lineNumberView, at: index)
-                stackView.needsLayout = true
-                stackView.layoutSubtreeIfNeeded()
+            .map { ($0 == .rightToLeft) ? NSUserInterfaceLayoutDirection.rightToLeft : .leftToRight }
+            .sink { [weak self] direction in
+                self?.stackView?.userInterfaceLayoutDirection = direction
+                (self?.textView?.enclosingScrollView as? BidiScrollView)?.scrollerDirection = direction
             }
         
         // toggle visibility of the separator of the line number view
@@ -178,13 +160,15 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
     
     // MARK: Services Menu Requestor
     
-    func readSelection(from pboard: NSPasteboard) -> Bool {
+    nonisolated func readSelection(from pboard: NSPasteboard) -> Bool {
         
         // scan from continuity camera
         if pboard.canReadItem(withDataConformingToTypes: NSImage.imageTypes),
            let image = NSImage(pasteboard: pboard)
         {
-            self.popoverLiveText(image: image)
+            Task { @MainActor in
+                self.popoverLiveText(image: image)
+            }
             
             return true
         }
@@ -351,7 +335,7 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
     /// Shows a popover indicating the given image and live text detection.
     ///
     /// - Parameter image: The image to scan text.
-    @MainActor private func popoverLiveText(image: NSImage) {
+    private func popoverLiveText(image: NSImage) {
         
         guard let textView = self.textView else { return assertionFailure() }
         
@@ -373,7 +357,7 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
     /// Hides the existing advanced character counter.
     ///
     /// - Parameter counterView: The advanced character counter to dismiss.
-    @MainActor private func dismissAdvancedCharacterCounter() {
+    private func dismissAdvancedCharacterCounter() {
         
         guard let counterView = self.advancedCounterView else { return assertionFailure() }
         
@@ -388,11 +372,12 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
     
     
     /// Sets and shows advanced character counter.
-    @MainActor private func showAdvancedCharacterCounter() {
+    private func showAdvancedCharacterCounter() {
         
         guard let textView = self.textView else { return assertionFailure() }
         
-        let counter = AdvancedCharacterCounter(textView: textView)
+        let counter = AdvancedCharacterCounter()
+        counter.observe(textView: textView)
         let rootView = AdvancedCharacterCounterView(counter: counter) { [weak self] in
             self?.dismissAdvancedCharacterCounter()
         }

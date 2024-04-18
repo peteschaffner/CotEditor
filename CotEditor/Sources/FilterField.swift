@@ -47,6 +47,7 @@ struct FilterField: NSViewRepresentable {
         searchField.delegate = context.coordinator
         searchField.placeholderString = String(localized: "Filter", table: "FilterField", comment: "placeholder for filter field")
         searchField.sendsSearchStringImmediately = true
+        searchField.recentsAutosaveName = self.autosaveName
 
         return searchField
     }
@@ -55,7 +56,6 @@ struct FilterField: NSViewRepresentable {
     func updateNSView(_ nsView: NSSearchField, context: Context) {
         
         nsView.stringValue = self.text
-        nsView.recentsAutosaveName = self.autosaveName
     }
     
     
@@ -79,20 +79,12 @@ struct FilterField: NSViewRepresentable {
     
     final class Coordinator: NSObject, NSSearchFieldDelegate {
         
-        @Binding private var text: String
+        @Binding fileprivate var text: String
         
         
         init(text: Binding<String>) {
             
             self._text = text
-        }
-        
-        
-        func controlTextDidChange(_ obj: Notification) {
-            
-            guard let textField = obj.object as? NSTextField else { return }
-            
-            self.text = textField.stringValue
         }
     }
 }
@@ -117,7 +109,7 @@ private final class InnerFilterField: NSSearchField {
         
         super.init(frame: .zero)
         
-        self.validateImage()
+        self.searchButtonCell?.image = self.image
         
         // workaround the cancel button color is .labelColor (2022-09, macOS 13)
         if let cancelButtonCell = (self.cell as? NSSearchFieldCell)?.cancelButtonCell {
@@ -126,6 +118,63 @@ private final class InnerFilterField: NSSearchField {
         }
         
         self.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        self.alignment = .natural
+    }
+    
+    
+    required init?(coder: NSCoder) {
+        
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    
+    
+    // MARK: Text Field Methods
+    
+    override var stringValue: String  {
+        
+        didSet {
+            self.searchButtonCell?.image = stringValue.isEmpty ? self.image : self.filteringImage
+        }
+    }
+    
+    
+    override var recentsAutosaveName: NSSearchField.RecentsAutosaveName? {
+        
+        didSet {
+            self.invalidateSearchMenu()
+        }
+    }
+    
+    
+    override func draw(_ dirtyRect: NSRect) {
+        
+        // workaround to update icon while typing
+        super.draw(dirtyRect)
+    }
+    
+    
+    override func sendAction(_ action: Selector?, to target: Any?) -> Bool {
+        
+        // invoked when the search string was set even by selecting the search menu
+        (self.delegate as? FilterField.Coordinator)?.text = self.stringValue
+        
+        return super.sendAction(action, to: target)
+    }
+    
+    
+    
+    // MARK: Private Methods
+    
+    /// The button cell used to display the search-button image.
+    private var searchButtonCell: NSButtonCell? {
+        
+        (self.cell as? NSSearchFieldCell)?.searchButtonCell
+    }
+    
+    
+    /// Sets up the search menu.
+    private func invalidateSearchMenu() {
         
         let searchMenu = NSMenu(title: String(localized: "Recent Filters", table: "FilterField", comment: "menu label"))
         searchMenu.addItem(withTitle: String(localized: "Recent Filters", table: "FilterField"), action: nil, keyEquivalent: "")
@@ -139,53 +188,8 @@ private final class InnerFilterField: NSSearchField {
         searchMenu.addItem(withTitle: String(localized: "No Recent Filter", table: "FilterField", comment: "menu item label"),
                            action: nil, keyEquivalent: "")
             .tag = NSSearchField.noRecentsMenuItemTag
+        
         self.searchMenuTemplate = searchMenu
-    }
-    
-    
-    required init?(coder: NSCoder) {
-        
-        fatalError("init(coder:) has not been implemented")
-    }
-    
-    
-    
-    // MARK: Text Field Methods
-    
-    override func draw(_ dirtyRect: NSRect) {
-        
-        // workaround to update icon while typing
-        super.draw(dirtyRect)
-    }
-    
-    
-    override func textDidChange(_ notification: Notification) {
-        
-        super.textDidChange(notification)
-        
-        self.validateImage()
-    }
-    
-    
-    override func sendAction(_ action: Selector?, to target: Any?) -> Bool {
-        
-        // invoked when the search string was set by selecting recent history menu
-        defer {
-            self.validateImage()
-        }
-        
-        return super.sendAction(action, to: target)
-    }
-    
-    
-    
-    // MARK: Private Methods
-    
-    private func validateImage() {
-        
-        guard let buttonCell = (self.cell as? NSSearchFieldCell)?.searchButtonCell else { return assertionFailure() }
-        
-        buttonCell.image = self.stringValue.isEmpty ? self.image : self.filteringImage
     }
 }
 
@@ -196,6 +200,7 @@ private final class InnerFilterField: NSSearchField {
 #Preview {
     @State var text = ""
     return FilterField(text: $text)
+        .autosaveName("FilterField Preview")
         .frame(width: 160)
         .padding()
 }

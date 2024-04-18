@@ -9,7 +9,7 @@
 //  ---------------------------------------------------------------------------
 //
 //  © 2004-2007 nakamuxu
-//  © 2014-2023 1024jp
+//  © 2014-2024 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -197,9 +197,18 @@ final class PrintTextView: NSTextView, Themable {
         // draw line numbers if needed
         if self.printsLineNumber {
             guard
-                let layoutManager = self.layoutManager as? LayoutManager,
+                let layoutManager = self.layoutManager as? PrintLayoutManager,
                 let textContainer = self.textContainer
             else { return assertionFailure() }
+            
+            // determine range to draw numbers
+            guard
+                let dirtyRange = self.range(for: dirtyRect, withoutAdditionalLayout: true),
+                let range = if let visibleRange = layoutManager.visibleRange {
+                    dirtyRange.intersection(visibleRange)
+                } else {
+                    dirtyRange
+                } else { return }
             
             // prepare text attributes for line numbers
             let numberFontSize = (0.9 * (self.font?.pointSize ?? 12)).rounded()
@@ -225,29 +234,17 @@ final class PrintTextView: NSTextView, Themable {
                 NSGraphicsContext.current?.cgContext.rotate(by: -.pi / 2)
             }
             
-            let options: NSTextView.LineEnumerationOptions = isVerticalText ? [.bySkippingWrappedLine] : []
-            let range = (self.layoutManager as? PrintLayoutManager)?.visibleRange
-            self.enumerateLineFragments(in: dirtyRect, for: range, options: options.union(.bySkippingExtraLine)) { (lineRect, line, lineNumber) in
-                let numberString: String = switch line {
-                    case .new:
-                        if isVerticalText, lineNumber != 1, !lineNumber.isMultiple(of: 5) {
-                            "·"  // draw number only every 5 times
-                        } else {
-                            String(lineNumber)
-                        }
-                    case .wrapped:
-                        "-"
-                }
+            self.enumerateLineFragments(in: range, options: .bySkippingExtraLine) { (lineRect, lineNumber, _) in
+                // draw number only every 5 times
+                let numberString = (!isVerticalText || lineNumber == 1 || lineNumber.isMultiple(of: 5)) ? String(lineNumber) :  "·"
                 
                 // adjust position to draw
                 let width = CGFloat(numberString.count) * numberSize.width
-                let point: NSPoint = if isVerticalText {
-                    NSPoint(x: -lineRect.midY - width / 2,
-                            y: horizontalOrigin - numberSize.height)
-                } else {
-                    NSPoint(x: horizontalOrigin - width,  // - width to align to right
-                            y: lineRect.minY + baselineOffset - numberAscender)
-                }
+                let point = isVerticalText
+                    ? NSPoint(x: -lineRect.midY - width / 2,
+                              y: horizontalOrigin - numberSize.height)
+                    : NSPoint(x: horizontalOrigin - width,  // - width to align to right
+                              y: lineRect.minY + baselineOffset - numberAscender)
                 
                 // draw number
                 NSAttributedString(string: numberString, attributes: attrs).draw(at: point)

@@ -9,7 +9,7 @@
 //  ---------------------------------------------------------------------------
 //
 //  © 2004-2007 nakamuxu
-//  © 2014-2023 1024jp
+//  © 2014-2024 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -28,13 +28,13 @@ import AppKit
 import Combine
 import Foundation
 
-@objc protocol SnippetInsertable: AnyObject {
+@MainActor @objc protocol SnippetInsertable: AnyObject {
     
     @objc func insertSnippet(_ sender: NSMenuItem)
 }
 
 
-final class SnippetManager {
+final class SnippetManager: @unchecked Sendable {
     
     // MARK: Public Properties
     

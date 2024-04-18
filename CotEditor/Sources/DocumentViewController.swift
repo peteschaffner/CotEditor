@@ -44,7 +44,7 @@ final class DocumentViewController: NSSplitViewController, ThemeChanging, NSTool
     var document: Document  {
         
         didSet {
-            self.statusBarViewController.document = document
+            self.statusBarModel.document = document
             self.updateDocument()
         }
     }
@@ -65,8 +65,7 @@ final class DocumentViewController: NSSplitViewController, ThemeChanging, NSTool
     ]
     
     private lazy var splitViewController = SplitViewController()
-    private lazy var statusBarViewController: StatusBarController = NSStoryboard(name: "StatusBar", bundle: nil)
-        .instantiateInitialController { StatusBarController(document: self.document, coder: $0) }!
+    private lazy var statusBarModel = StatusBar.Model(document: self.document)
     private weak var statusBarItem: NSSplitViewItem?
     
     private var documentSyntaxObserver: AnyCancellable?
@@ -115,7 +114,7 @@ final class DocumentViewController: NSSplitViewController, ThemeChanging, NSTool
         self.addChild(self.splitViewController)
         
         // set status bar
-        let statusBarItem = NSSplitViewItem(viewController: self.statusBarViewController)
+        let statusBarItem = NSSplitViewItem(viewController: StatusBarController(model: self.statusBarModel))
         statusBarItem.viewController.view.wantsLayer = true
         statusBarItem.isCollapsed = true  // avoid initial view loading
         self.addSplitViewItem(statusBarItem)
@@ -388,7 +387,7 @@ final class DocumentViewController: NSSplitViewController, ThemeChanging, NSTool
             self.focusedTextView?.hasMarkedText() != true
         else { return }
         
-        self.document.analyzer.invalidate()
+        self.document.analyzer.invalidateContent()
         self.outlineParseDebouncer.schedule()
         
         // -> Perform in the next run loop to give layoutManagers time to update their values.
@@ -402,7 +401,7 @@ final class DocumentViewController: NSSplitViewController, ThemeChanging, NSTool
     /// Invoked when the selection did change.
     @objc private func textViewDidLiveChangeSelection(_ notification: Notification) {
         
-        self.document.analyzer.invalidate(onlySelection: true)
+        self.document.analyzer.invalidateSelection()
     }
     
     

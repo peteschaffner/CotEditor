@@ -84,7 +84,6 @@ extension DefaultKeys {
     static let detectsIndentStyle = DefaultKey<Bool>("detectsIndentStyle")
     static let autoExpandTab = DefaultKey<Bool>("autoExpandTab")
     static let indentWithTabKey = DefaultKey<Bool>("indentWithTabKey")
-    static let appendsCommentSpacer = DefaultKey<Bool>("appendsCommentSpacer")
     static let autoLinkDetection = DefaultKey<Bool>("autoLinkDetectionKey")
     static let checkSpellingAsType = DefaultKey<Bool>("checkSpellingAsType")
     static let highlightBraces = DefaultKey<Bool>("highlightBraces")
@@ -93,7 +92,7 @@ extension DefaultKeys {
     static let selectionInstanceHighlightDelay = DefaultKey<Double>("selectionInstanceHighlightDelay")
     
     // Mode
-    static let modes = DefaultKey<[String: Data]>("modes")
+    static let modes = DefaultKey<[String: AnyHashable]>("modes")
     
     // Format
     static let lineEndCharCode = DefaultKey<Int>("defaultLineEndCharCode")

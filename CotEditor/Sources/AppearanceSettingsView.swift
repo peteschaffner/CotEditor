@@ -27,6 +27,8 @@ import SwiftUI
 
 struct AppearanceSettingsView: View {
     
+    @Environment(\.layoutDirection) private var layoutDirection
+    
     @AppStorage(.font) private var font
     @AppStorage(.shouldAntialias) private var shouldAntialias
     @AppStorage(.ligature) private var ligature
@@ -57,14 +59,14 @@ struct AppearanceSettingsView: View {
                     .gridColumnAlignment(.trailing)
                 
                 FontSettingView(data: $monospacedFont ?? (try! FontType.monospaced.systemFont().archivedData), antialias: $monospacedShouldAntialias, ligature: $monospacedLigature)
-                    .onChange(of: self.monospacedFont) { [oldData = self.monospacedFont] data in
+                    .onChange(of: self.monospacedFont) { [oldValue = self.monospacedFont] newValue in
                         guard
-                            let data,
-                            let font = NSFont(archivedData: data),
+                            let newValue,
+                            let font = NSFont(archivedData: newValue),
                             !font.isFixedPitch
                         else { return }
                         
-                        self.selectingFont = oldData
+                        self.selectingFont = oldValue
                         self.isMonospacedFontAlertPresented = true
                     }
                     .alert(String(localized: "The selected font doesn’t seem to be monospaced.", table: "AppearanceSettings"), isPresented: $isMonospacedFontAlertPresented, presenting: self.selectingFont) { font in
@@ -85,9 +87,9 @@ struct AppearanceSettingsView: View {
                     .gridColumnAlignment(.trailing)
                 
                 HStack(alignment: .firstTextBaseline) {
-                    Stepper(value: $lineHeight, in: 0.1...10, step: 0.1, format: .number, label: EmptyView.init)
+                    Stepper(value: $lineHeight, in: 0.1...10, step: 0.1, format: .number.precision(.fractionLength(1...2)), label: EmptyView.init)
                         .monospacedDigit()
-                        .multilineTextAlignment(.trailing)
+                        .multilineTextAlignment(self.layoutDirection == .rightToLeft ? .leading : .trailing)
                     
                     Text("times", tableName: "AppearanceSettings", comment: "unit for line height")
                 }
@@ -119,7 +121,7 @@ struct AppearanceSettingsView: View {
                     
                     TextField(value: $windowAlpha, format: .percent.precision(.fractionLength(0)), prompt: Text(1, format: .percent), label: EmptyView.init)
                         .monospacedDigit()
-                        .multilineTextAlignment(.trailing)
+                        .environment(\.layoutDirection, .rightToLeft)
                         .frame(width: 48)
                 }
             }

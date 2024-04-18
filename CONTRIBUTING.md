@@ -38,18 +38,21 @@ If your localization makes some layout in views destroy, try first making the se
 
 #### Submitting a new localization
 
-Currently, the CotEditor project only accepts new localizations whose provider can maintain the localization thereafter. Please explicitly tell us if you also intend to be a localization maintainer when submitting a new localization. The standard maintenance process of a localization is described in the subsection below.
+Currently, the CotEditor project only accepts new localizations whose provider can maintain the localization thereafter. Please explicitly tell us if you also intend to be a localization maintainer when submitting a new localization. The standard maintenance process of a localization is described in the following subsection.
 
-To create a new localization, go to Projects > CotEditor > Info > Localizations in Xcode and add your language to the table. Because CotEditor currently uses the String Catalog format (.xcstrings) first introduced in Xcode 15 released in 2023, we recommend you to edit localizations in Xcode. In the Resources group in the project, you can find all strings files (.xcstrings) both in the Localizations and Storyboards subgroups. The new language you added will automatically be appeared in the catalog list. Select your language and fill each cell of your language column in the table.
-Note that you don't need to localize the UnicodeBlock.strings file. It will be done by @1024jp based on the localization data by Apple.
+You have two options to add a new localization to CotEditor.app. Choose one of them depending on your knowledge and preference:
 
-- cf. [Localizing and varying text with a string catalog](https://developer.apple.com/documentation/xcode/localizing-and-varying-text-with-a-string-catalog)
+- Option 1: Add a new localization in Xcode by yourself and make a pull-request (for those who get used to git and Xcode projects):
+    - Open CotEditor.xcodeproj in Xcode, go to Project > CotEditor > Info > Localizations, and then add your language to the table. In the Resources group in the project, you can find all strings files (.xcstrings) both in the Localizations and Storyboards subgroups. The new language you added will automatically be appeared in the catalog list. Select your language and fill each cell of your language column in the table. Note that you don't need to localize the UnicodeBlock.strings file. It will be done by @1024jp based on the localization data by Apple.
+    - CotEditor currently uses the String Catalog format (.xcstrings) first introduced in Xcode 15 released in 2023. cf. [Localizing and varying text with a string catalog](https://developer.apple.com/documentation/xcode/localizing-and-varying-text-with-a-string-catalog)
+- Option 2: Communicate with the maintainer personally and work with provided localization template (.xcloc file):
+    - Send a message to the maintainer (@1024jp) either by creating a new issue on GitHub or by e-mail to ask to get the localization template (.xcloc file) for your language. When you receiving the .xcloc file, open it in Xcode and fill each cell of your language column in the tables. When finished, send back the template file to the maintainer.
 
 #### Localization maintenance process
 
 A standard localization update proceeds as follows:
 
-1. When CotEditor has new strings to be localized, the CotEditor maintainer, @1024jp, creates a new ticket on GitHub Issues and mentions the localization maintainers in it so that they can keep all their localized strings up to date. The ticket includes all strings to be updated and their descriptions, sometime with screenshots. e.g. [#1519](https://github.com/coteditor/CotEditor/issues/1519).
+1. When CotEditor has new strings to be localized, the CotEditor maintainer, @1024jp, creates a new ticket on GitHub Issues and mentions the localization maintainers in it so that they can keep all their localized strings up to date. The ticket includes all strings to be updated and their descriptions, sometime with screenshots. e.g., [#1519](https://github.com/coteditor/CotEditor/issues/1519).
 2. The localizers either post the localized strings to the thread or make a pull request on GitHub. The maintainers should localize the updated strings within about one week (the shorter period is, of course, welcome, but not required). All the responses must be done on GitHub. Not par email.
 3. The CotEditor maintainer reviews and merges the update provided by the localizers.
 
@@ -61,6 +64,7 @@ Currently, we already have maintainers for:
 - Simplified Chinese
 - Traditional Chinese
 - Czech
+- Dutch
 - French
 - German
 - Italian

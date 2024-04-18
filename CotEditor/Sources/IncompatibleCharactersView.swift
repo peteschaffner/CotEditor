@@ -39,8 +39,8 @@ struct IncompatibleCharactersView: View {
         
         var document: Document?  { didSet { self.invalidateObservation() } }
         
+        private(set) var task: Task<Void, any Error>?
         private var observer: AnyCancellable?
-        private var task: Task<Void, any Error>?
     }
     
     
@@ -101,14 +101,17 @@ struct IncompatibleCharactersView: View {
                 .onChange(of: self.selection) { newValue in
                     self.model.selectItem(id: newValue)
                 }
-                .onChange(of: self.sortOrder) { newOrder in
+                .onChange(of: self.sortOrder) { newValue in
                     withAnimation {
-                        self.model.items.sort(using: newOrder)
+                        self.model.items.sort(using: newValue)
                     }
                 }
                 .tableStyle(.bordered)
                 .border(Color(nsColor: .gridColor))
             }
+        }
+        .onDisappear {
+            self.model.task?.cancel()
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Incompatible Characters", tableName: "Document"))

@@ -88,3 +88,60 @@ extension Syntax.Kind {
         }
     }
 }
+
+
+// MARK: - Serialization
+
+extension ModeOptions {
+    
+    /// Instantiates from the serialization form.
+    ///
+    /// - Parameter dictionary: The dictionary.
+    init?(dictionary: [String: AnyHashable]) {
+        
+        let dictionary = dictionary.compactMapKeys(CodingKeys.init(stringValue:))
+        
+        guard
+            let fontRawValue = dictionary[.fontType] as? String,
+            let fontType = FontType(rawValue: fontRawValue) else
+        { return nil }
+        
+        self.fontType = fontType
+        
+        self.smartInsertDelete = dictionary[.smartInsertDelete] as? Bool ?? false
+        self.automaticQuoteSubstitution = dictionary[.automaticQuoteSubstitution] as? Bool ?? false
+        self.automaticDashSubstitution = dictionary[.automaticDashSubstitution] as? Bool ?? false
+        self.automaticSymbolBalancing = dictionary[.automaticSymbolBalancing] as? Bool ?? false
+        
+        self.continuousSpellChecking = dictionary[.continuousSpellChecking] as? Bool ?? false
+        self.grammarChecking = dictionary[.grammarChecking] as? Bool ?? false
+        self.automaticSpellingCorrection = dictionary[.automaticSpellingCorrection] as? Bool ?? false
+        
+        self.completionWordTypes = CompletionWordTypes(rawValue: dictionary[.completionWordTypes] as? Int ?? 0)
+        self.automaticCompletion = dictionary[.automaticCompletion] as? Bool ?? false
+    }
+    
+    
+    /// Dictionary representation to serialize
+    var dictionary: [String: AnyHashable] {
+        
+        [CodingKeys
+         .fontType: self.fontType.rawValue,
+         
+         .smartInsertDelete: self.smartInsertDelete,
+         .automaticQuoteSubstitution: self.automaticQuoteSubstitution,
+         .automaticDashSubstitution: self.automaticDashSubstitution,
+         .automaticSymbolBalancing: self.automaticSymbolBalancing,
+         
+         .continuousSpellChecking: self.continuousSpellChecking,
+         .grammarChecking: self.grammarChecking,
+         .automaticSpellingCorrection: self.automaticSpellingCorrection,
+         
+         .completionWordTypes: self.completionWordTypes.rawValue,
+         .automaticCompletion: self.automaticCompletion,
+        ]
+        .filter { ($0.value as? Int) != 0 }
+        .filter { ($0.value as? Bool) != false }
+        .mapKeys(\.stringValue)
+    }
+}

@@ -25,9 +25,16 @@
 //
 
 import AppKit
+import SwiftUI
 import Combine
 import UniformTypeIdentifiers
 import OSLog
+
+extension Notification.Name: @unchecked Sendable { }
+
+// Logger should be Sendable. (2024-04, macOS 14.3, Xcode 15.3)
+// cf. https://forums.developer.apple.com/forums/thread/747816
+extension Logger: @unchecked Sendable { }
 
 extension Logger {
     
@@ -71,8 +78,8 @@ private enum BundleIdentifier {
     
     private var menuUpdateObservers: Set<AnyCancellable> = []
     
+    private lazy var aboutPanel = NSPanel(contentViewController: NSHostingController(rootView: AboutView()))
     private lazy var settingsWindowController = SettingsWindowController()
-    private lazy var acknowledgmentsWindowController = WebDocumentWindowController(fileURL: Bundle.main.url(forResource: "Acknowledgments", withExtension: "html")!)
     
     @IBOutlet private weak var encodingsMenu: NSMenu?
     @IBOutlet private weak var syntaxesMenu: NSMenu?
@@ -152,7 +159,7 @@ private enum BundleIdentifier {
                 guard let menu = self?.syntaxesMenu else { return }
                 
                 let recolorItem = menu.items.first { $0.action == #selector((any SyntaxChanging).recolorAll) }
-                let noneItem = NSMenuItem(title: String(localized: "SyntaxName.none", table: "Syntax"), action: #selector((any SyntaxChanging).changeSyntax), keyEquivalent: "")
+                let noneItem = NSMenuItem(title: String(localized: "SyntaxName.none", defaultValue: "None", table: "Syntax"), action: #selector((any SyntaxChanging).changeSyntax), keyEquivalent: "")
                 noneItem.representedObject = SyntaxName.none
                 
                 menu.removeAllItems()
@@ -318,26 +325,19 @@ private enum BundleIdentifier {
     }
     
     
-    /// Shows the standard about panel.
+    /// Shows the about panel.
     @IBAction func showAboutPanel(_ sender: Any?) {
         
-        var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
+        // initialize panel settings
+        if !self.aboutPanel.styleMask.contains(.utilityWindow) {
+            self.aboutPanel.styleMask = [.closable, .titled, .fullSizeContentView, .utilityWindow]
+            self.aboutPanel.titleVisibility = .hidden
+            self.aboutPanel.titlebarAppearsTransparent = true
+            self.aboutPanel.hidesOnDeactivate = false
+            self.aboutPanel.becomesKeyOnlyIfNeeded = true
+        }
         
-        #if !SPARKLE  // Remove Sparkle from 3rd party code list
-        options[.credits] = {
-            guard
-                let url = Bundle.main.url(forResource: "Credits", withExtension: "html"),
-                var html = try? String(contentsOf: url),
-                let range = html.range(of: "Sparkle")
-            else { assertionFailure(); return nil }
-            
-            html.removeSubrange(html.lineRange(for: range))
-            
-            return NSAttributedString(html: Data(html.utf8), baseURL: url, documentAttributes: nil)
-        }()
-        #endif
-        
-        NSApp.orderFrontStandardAboutPanel(options: options)
+        self.aboutPanel.makeKeyAndOrderFront(sender)
     }
     
     
@@ -366,13 +366,6 @@ private enum BundleIdentifier {
     @IBAction func showConsolePanel(_ sender: Any?) {
         
         ConsolePanelController.shared.showWindow(sender)
-    }
-    
-    
-    /// Shows acknowledgments window.
-    @IBAction func showAcknowledgments(_ sender: Any?) {
-        
-        self.acknowledgmentsWindowController.showWindow(sender)
     }
     
     

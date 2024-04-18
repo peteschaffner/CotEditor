@@ -60,8 +60,8 @@ final class Document: NSDocument, AdditionalDocumentPreparing, EncodingChanging 
     @Published private(set) var fileAttributes: DocumentFile.Attributes?
     
     let lineEndingScanner: LineEndingScanner
-    private(set) lazy var selection = TextSelection(document: self)
     private(set) lazy var analyzer = DocumentAnalyzer(document: self)
+    private(set) lazy var selection = TextSelection(document: self)
     
     let didChangeSyntax = PassthroughSubject<String, Never>()
     
@@ -127,6 +127,13 @@ final class Document: NSDocument, AdditionalDocumentPreparing, EncodingChanging 
         self.syntaxUpdateObserver = SyntaxManager.shared.didUpdateSetting
             .filter { [weak self] change in change.old == self?.syntaxParser.name }
             .sink { [weak self] change in self?.setSyntax(name: change.new ?? SyntaxName.none) }
+    }
+    
+    
+    deinit {
+        self.syntaxParser.cancel()
+        self.analyzer.cancel()
+        self.urlDetector.cancel()
     }
     
     
@@ -262,7 +269,7 @@ final class Document: NSDocument, AdditionalDocumentPreparing, EncodingChanging 
                     .map(\.string.isEmpty)
                     .removeDuplicates()
                     .receive(on: RunLoop.main)
-                    .assign(to: \.isWhitepaper, on: windowController)
+                    .assign(to: \.isWhitePaper, on: windowController)
             }
         }
         
@@ -270,7 +277,7 @@ final class Document: NSDocument, AdditionalDocumentPreparing, EncodingChanging 
     }
     
     
-    override func fileNameExtension(forType typeName: String, saveOperation: NSDocument.SaveOperationType) -> String? {  // nonisolated
+    override nonisolated func fileNameExtension(forType typeName: String, saveOperation: NSDocument.SaveOperationType) -> String? {
         
         if !self.isDraft, let pathExtension = self.fileURL?.pathExtension {
             return pathExtension
@@ -442,7 +449,7 @@ final class Document: NSDocument, AdditionalDocumentPreparing, EncodingChanging 
             }
             
             if !saveOperation.isAutosave {
-                ScriptManager.shared.dispatch(event: .documentSaved, document: self)
+                ScriptManager.shared.dispatch(event: .documentSaved, document: self.objectSpecifier)
             }
         }
     }
@@ -803,7 +810,9 @@ final class Document: NSDocument, AdditionalDocumentPreparing, EncodingChanging 
         // [caution] This method may be called from a background thread due to concurrent-opening.
         // -> This method won't be invoked on Resume. (2015-01-26)
         
-        ScriptManager.shared.dispatch(event: .documentOpened, document: self)
+        Task {
+            ScriptManager.shared.dispatch(event: .documentOpened, document: await self.objectSpecifier)
+        }
     }
     
     
@@ -1032,7 +1041,7 @@ final class Document: NSDocument, AdditionalDocumentPreparing, EncodingChanging 
     /// Changes the text encoding by asking options to the user.
     ///
     /// - Parameter fileEncoding: The text encoding to change.
-    @MainActor private func askChangingEncoding(to fileEncoding: FileEncoding) {
+    @MainActor func askChangingEncoding(to fileEncoding: FileEncoding) {
         
         assert(Thread.isMainThread)
         

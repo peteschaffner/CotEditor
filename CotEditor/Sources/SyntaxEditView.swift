@@ -62,7 +62,10 @@ struct SyntaxEditView: View {
     let saveAction: SaveAction
     
     weak var parent: NSHostingController<Self>?
-
+    
+    
+    @MainActor private static var viewSize = CGSize(width: 680, height: 500)
+    
     @State private var name: String = ""
     @State private var message: String?
     
@@ -102,7 +105,7 @@ struct SyntaxEditView: View {
                         Text(pane.label)
                     }
                 }
-            }
+            }.environment(\.sidebarRowSize, .medium)
             
         } detail: {
             VStack(spacing: 16) {
@@ -176,7 +179,12 @@ struct SyntaxEditView: View {
             self.errors = self.syntax.validate()
         }
         .alert(error: $error)
-        .frame(idealWidth: 680, minHeight: 500, idealHeight: 500)
+        .background {  // store last view size
+            GeometryReader { geometry in
+                Color.clear.onChange(of: geometry.size) { Self.viewSize = $0 }
+            }
+        }
+        .frame(idealWidth: Self.viewSize.width, minHeight: 500, idealHeight: Self.viewSize.height)
     }
     
     
@@ -220,7 +228,7 @@ struct SyntaxEditView: View {
     // MARK: Private Methods
     
     /// Submits the syntax if it is valid.
-    private func submit() {
+    @MainActor private func submit() {
         
         // syntax name validation
         self.name = self.name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -249,7 +257,7 @@ struct SyntaxEditView: View {
     
     
     /// Restores the current settings in editor to the user default.
-    private func restore() {
+    @MainActor private func restore() {
         
         guard
             self.isBundled,
@@ -269,7 +277,7 @@ struct SyntaxEditView: View {
     private func validate(name: String) -> Bool {
         
         if self.isBundled { return true }  // cannot edit syntax name
-
+        
         do {
             try SyntaxManager.shared.validate(settingName: name, originalName: self.originalName)
         } catch {
